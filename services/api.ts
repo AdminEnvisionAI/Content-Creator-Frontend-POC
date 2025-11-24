@@ -8,7 +8,8 @@ export const API_ENDPOINTS = {
   GET_USER_STATS: '/get_user_stats',
   GET_TOP_USERS: '/get-top-engagemnet-rate',
   GET_ONE_USER: '/get-one-user-profile-data',
-  SEARCH_USERS: '/search-influencers', 
+  SEARCH_USERS: '/search-influencers',
+  GET_USER_PROFILE_BY_CREATOR_ID: '/get-one-user-profile-data-creatorId',
 };
 
 const getHeaders = () => {
@@ -82,4 +83,19 @@ export const api = {
     if (!response.ok) throw new Error('Failed to fetch user profile');
     return response.json();
   },
+
+  getUserProfileByCreatorId: async (creatorId: string, platform: string): Promise<SingleUserResponse> => {
+    const response = await fetch(`${BASE_URL}${API_ENDPOINTS.GET_USER_PROFILE_BY_CREATOR_ID}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ creatorId, platform }),
+    });
+    // A 404 might be a valid "not found" response, not necessarily a hard error.
+    if (!response.ok) throw new Error(`Profile not found on ${platform}`);
+    const result = await response.json();
+    if (!result.data || result.data.length === 0) {
+      throw new Error(`Profile not found on ${platform}`);
+    }
+    return result;
+  }
 };
