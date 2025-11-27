@@ -1,6 +1,6 @@
 import { AuthResponse, StatsResponse, UserListResponse, SingleUserResponse } from '../types';
 
-export const BASE_URL = 'https://401a01ea0bc0.ngrok-free.app/api/v1';
+export const BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
 export const API_ENDPOINTS = {
   LOGIN: '/login',
