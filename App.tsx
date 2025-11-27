@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreatorProfile from './pages/CreatorProfile';
+import AuthCallback from './pages/AuthCallback';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
@@ -23,6 +24,15 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route 
+            path="/auth/callback" 
+            element={
+              <ProtectedRoute>
+                <AuthCallback />
+              </ProtectedRoute>
+            } 
+          />
+          
           <Route 
             path="/dashboard" 
             element={

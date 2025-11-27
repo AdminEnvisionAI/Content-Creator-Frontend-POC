@@ -1,6 +1,6 @@
 import { AuthResponse, StatsResponse, UserListResponse, SingleUserResponse } from '../types';
 
-const BASE_URL = 'https://f876be5547f7.ngrok-free.app/api/v1';
+export const BASE_URL = 'https://401a01ea0bc0.ngrok-free.app/api/v1';
 
 export const API_ENDPOINTS = {
   LOGIN: '/login',
@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
   GET_ONE_USER: '/get-one-user-profile-data',
   SEARCH_USERS: '/search-influencers',
   GET_USER_PROFILE_BY_CREATOR_ID: '/get-one-user-profile-data-creatorId',
+  EXCHANGE_CODE: '/exchange_code',
 };
 
 const getHeaders = () => {
@@ -97,5 +98,15 @@ export const api = {
       throw new Error(`Profile not found on ${platform}`);
     }
     return result;
+  },
+
+  connectInstagram: async (code: string): Promise<any> => {
+    const response = await fetch(`${BASE_URL}${API_ENDPOINTS.EXCHANGE_CODE}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ code }),
+    });
+    if (!response.ok) throw new Error('Failed to connect Instagram');
+    return response.json();
   }
 };

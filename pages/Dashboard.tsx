@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Youtube, Twitter, Instagram, Users, Briefcase, Trophy, TrendingUp } from 'lucide-react';
-import { api } from '../services/api';
-import { Creator, StatsResponse } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { Search, Youtube, Twitter, Instagram, Users, Briefcase, Trophy, TrendingUp, CheckCircle } from 'lucide-react';
+import { api, BASE_URL, API_ENDPOINTS } from '../services/api';
+import { selectUser, updateConnectionStatus } from '../redux/slices/userSlice';
 import { Card, Button, Input, Badge } from '../components/ui';
 
-const StatBox = ({ icon: Icon, label, value, loading, color }: any) => (
+const FB_APP_ID = "1976150976498875";
+
+const StatBox = ({ icon: Icon, label, value, loading, color }) => (
   <Card className="relative overflow-hidden group">
     <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity ${color}`}>
       <Icon className="w-24 h-24 transform translate-x-4 -translate-y-4" />
@@ -26,7 +29,7 @@ const StatBox = ({ icon: Icon, label, value, loading, color }: any) => (
   </Card>
 );
 
-const PlatformIcon = ({ platform }: { platform: string }) => {
+const PlatformIcon = ({ platform }) => {
   switch (platform.toLowerCase()) {
     case 'youtube': return <Youtube className="w-5 h-5 text-red-500" />;
     case 'twitter': return <Twitter className="w-5 h-5 text-blue-400" />;
@@ -35,15 +38,20 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
   }
 };
 
-const Dashboard: React.FC = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<StatsResponse['data']>({ total_creators: 0, total_brands: 0, total_users: 0 });
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
+
+  const [stats, setStats] = useState({ total_creators: 0, total_brands: 0, total_users: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
-  const [creators, setCreators] = useState<Creator[]>([]);
+  const [creators, setCreators] = useState([]);
   const [creatorsLoading, setCreatorsLoading] = useState(true);
   const [platform, setPlatform] = useState('youtube');
   const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     const initStats = async () => {
@@ -59,7 +67,24 @@ const Dashboard: React.FC = () => {
     initStats();
   }, []);
 
-  const fetchCreators = useCallback(async (currPlatform: string, query: string) => {
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const isSuccess = params.get('success') === 'true';
+    const errorParam = params.get('error');
+
+    if (isSuccess) {
+      setSuccessMessage('Instagram account connected successfully!');
+      dispatch(updateConnectionStatus(true));
+      navigate('/dashboard', { replace: true });
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } else if (errorParam) {
+        setError(`Connection failed: ${errorParam.replace(/_/g, ' ')}`);
+        navigate('/dashboard', { replace: true });
+        setTimeout(() => setError(null), 7000);
+    }
+  }, [location, navigate, dispatch]);
+
+  const fetchCreators = useCallback(async (currPlatform, query) => {
     setCreatorsLoading(true);
     setError(null);
     try {
@@ -78,61 +103,90 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
-  // Initial load and platform switch
   useEffect(() => {
-    setSearchQuery(''); // Clear search when switching platforms
+    setSearchQuery('');
     fetchCreators(platform, '');
   }, [platform, fetchCreators]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e) => {
     e.preventDefault();
     fetchCreators(platform, searchQuery);
   };
 
-  const handlePlatformChange = (p: string) => {
+  const handlePlatformChange = (p) => {
     setPlatform(p);
+  };
+
+  const handleConnectInstagram = () => {
+    const redirectUri = `${BASE_URL}${API_ENDPOINTS.EXCHANGE_CODE}`;
+    const scope = "instagram_basic,instagram_manage_insights,instagram_manage_comments,public_profile,instagram_content_publish,pages_show_list";
+    const state = user?.id;
+    const fbLoginUrl = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=${state}`;
+    window.location.href = fbLoginUrl;
   };
 
   return (
     <div className="min-h-screen bg-dark-900 pb-20">
-      {/* Header Section */}
       <div className="bg-gradient-to-b from-dark-800 to-dark-900 border-b border-dark-700 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-4">Creator Intelligence Dashboard</h1>
-          <p className="text-slate-400 max-w-2xl text-lg">
-            Leverage AI-driven insights to discover high-performing creators. 
-            Analyze engagement rates, sentiment scores, and audience growth in real-time.
-          </p>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-4">Creator Intelligence Dashboard</h1>
+            <p className="text-slate-400 max-w-2xl text-lg">
+              Leverage AI-driven insights to discover high-performing creators.
+              Analyze engagement rates, sentiment scores, and audience growth in real-time.
+            </p>
+          </div>
+          <Button
+            onClick={handleConnectInstagram}
+            disabled={user?.isFBGraphConnected}
+            className={
+              user?.isFBGraphConnected
+                ? "bg-emerald-600 text-white border-0 shadow-lg shadow-emerald-900/20 whitespace-nowrap cursor-not-allowed"
+                : "bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white border-0 shadow-lg shadow-pink-900/20 whitespace-nowrap"
+            }
+          >
+            {user?.isFBGraphConnected ? (
+                <CheckCircle className="w-5 h-5 mr-2" />
+            ) : (
+                <Instagram className="w-5 h-5 mr-2" />
+            )}
+            {user?.isFBGraphConnected ? 'Connected' : 'Connect Instagram'}
+          </Button>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 -mt-8">
-        {/* Stats Grid */}
+        {successMessage && (
+          <div className="bg-emerald-500/10 border border-emerald-500/50 text-emerald-400 p-4 rounded-lg mb-6 flex items-center shadow-lg animate-fade-in">
+            <CheckCircle className="w-5 h-5 mr-2" />
+            <span className="font-medium">{successMessage}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <StatBox 
-            icon={Trophy} 
-            label="Total Creators" 
-            value={stats.total_creators} 
-            loading={statsLoading} 
-            color="text-amber-500" 
+          <StatBox
+            icon={Trophy}
+            label="Total Creators"
+            value={stats.total_creators}
+            loading={statsLoading}
+            color="text-amber-500"
           />
-          <StatBox 
-            icon={Briefcase} 
-            label="Partner Brands" 
-            value={stats.total_brands} 
-            loading={statsLoading} 
-            color="text-emerald-500" 
+          <StatBox
+            icon={Briefcase}
+            label="Partner Brands"
+            value={stats.total_brands}
+            loading={statsLoading}
+            color="text-emerald-500"
           />
-          <StatBox 
-            icon={Users} 
-            label="Total Analyzed Users" 
-            value={stats.total_users} 
-            loading={statsLoading} 
-            color="text-blue-500" 
+          <StatBox
+            icon={Users}
+            label="Total Analyzed Users"
+            value={stats.total_users}
+            loading={statsLoading}
+            color="text-blue-500"
           />
         </div>
 
-        {/* Controls */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
           <div className="flex bg-dark-800 p-1 rounded-lg border border-dark-700">
             {['youtube', 'instagram', 'twitter'].map((p) => (
@@ -140,8 +194,8 @@ const Dashboard: React.FC = () => {
                 key={p}
                 onClick={() => handlePlatformChange(p)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  platform === p 
-                    ? 'bg-dark-700 text-white shadow-sm' 
+                  platform === p
+                    ? 'bg-dark-700 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 } capitalize flex items-center gap-2`}
               >
@@ -154,8 +208,8 @@ const Dashboard: React.FC = () => {
           <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <Input 
-                placeholder="Search creators by name or niche..." 
+              <Input
+                placeholder="Search creators by name or niche..."
                 className="pl-10 bg-dark-800/50"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -167,14 +221,12 @@ const Dashboard: React.FC = () => {
           </form>
         </div>
 
-        {/* Error State */}
         {error && (
           <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-lg mb-8 text-center">
             {error}
           </div>
         )}
 
-        {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {creatorsLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
@@ -194,19 +246,19 @@ const Dashboard: React.FC = () => {
             ))
           ) : creators.length > 0 ? (
             creators.map((creator) => (
-              <Card 
-                key={creator._id} 
+              <Card
+                key={creator._id}
                 onClick={() => navigate(`/profile/${creator._id}`)}
                 className="group relative overflow-hidden"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <img 
-                        src={creator.profile_pic_url} 
-                        alt={creator.name} 
+                      <img
+                        src={creator.profile_pic_url}
+                        alt={creator.name}
                         className="w-14 h-14 rounded-full object-cover border-2 border-dark-700 group-hover:border-primary-500 transition-colors"
-                        onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${creator.name}&background=random` }}
+                        onError={(e) => { (e.target).src = `https://ui-avatars.com/api/?name=${creator.name}&background=random` }}
                       />
                       <div className="absolute -bottom-1 -right-1 bg-dark-800 rounded-full p-1 border border-dark-700">
                         <PlatformIcon platform={creator.platform} />

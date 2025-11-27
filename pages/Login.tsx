@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { api } from '../services/api';
+import { setLogin } from '../redux/slices/userSlice';
 import { Button, Input, Card } from '../components/ui';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('carryminatii@getnada.com'); // Default for demo
-  const [password, setPassword] = useState('kunal@123'); // Default for demo
+  const dispatch = useDispatch();
+  const [email, setEmail] = useState('carryminatii@getnada.com');
+  const [password, setPassword] = useState('kunal@123');
   const [userType, setUserType] = useState('creator');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,11 +19,13 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       const response = await api.login(email, password, userType);
-      localStorage.setItem('nexus_token', response.data.token);
-      localStorage.setItem('nexus_user', JSON.stringify(response.data.user));
+      dispatch(setLogin({
+          token: response.data.token,
+          user: response.data.user
+      }));
       navigate('/dashboard');
     } catch (err) {
       setError('Invalid credentials. Please try again.');
@@ -31,7 +36,6 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-900 relative overflow-hidden">
-      {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-600/20 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[100px]"></div>
@@ -68,9 +72,9 @@ const Login: React.FC = () => {
               </button>
             </div>
 
-            <Input 
-              label="Email Address" 
-              type="email" 
+            <Input
+              label="Email Address"
+              type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -78,9 +82,9 @@ const Login: React.FC = () => {
             />
 
             <div className="space-y-1">
-              <Input 
-                label="Password" 
-                type="password" 
+              <Input
+                label="Password"
+                type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -99,7 +103,7 @@ const Login: React.FC = () => {
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-400">
-            Don't have an account? 
+            Don't have an account?
             <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium ml-1">
               Create Account
             </Link>
